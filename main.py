@@ -1,27 +1,61 @@
 from fastapi import FastAPI, UploadFile, File
-from services.openai_service import get_voice_transcription, analyze_sentiment
+from pydantic import BaseModel
+from contextlib import asynccontextmanager
 
-app = FastAPI()
+# Servislerimizi import ediyoruz
+from services.openai_service import get_voice_transcription, analyze_sentiment
+from services.rag_service import initialize_rag_system, ask_pdf, get_rag_readiness
+
+# --- LIFESPAN (YAŞAM DÖNGÜSÜ) ---
+# FastAPI açılırken veritabanını kur, kapanırken temizle mantığı.
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Uygulama başlarken çalışır
+    initialize_rag_system("bilgi.pdf") 
+    yield
+    # Uygulama kapanırken çalışır (Şu an boş)
+
+app = FastAPI(lifespan=lifespan)
+
+# Soru için veri modeli
+class SoruIstegi(BaseModel):
+    soru: str
+
+@app.post("/pdf-ile-sohbet")
+def pdf_sohbet(istek: SoruIstegi):
+    # RAG servisine soruyu gönder
+    cevap = ask_pdf(istek.soru)
+    return {
+        "soru": istek.soru,
+        "cevap": cevap
+    }
+
+# --- ESKİ ENDPOINTLERİN DURUYOR ---
 
 @app.post("/ses-ile-analiz")
 async def ses_analiz(dosya: UploadFile = File(...)):
-    
     print(f"İşlem başladı: {dosya.filename}")
-
     ses_icerigi = await dosya.read()
-
-    cevrilen_metin = get_voice_transcription(dosya.filename, ses_icerigi)
-
-    print(f"Metin: {cevrilen_metin}")
-
+    cevrilen_metin = get_voice_transcription((dosya.filename, ses_icerigi))
     analiz_sonucu = analyze_sentiment(cevrilen_metin)
-
+    
     return {
         "dosya": dosya.filename,
         "metin": cevrilen_metin,
         "analiz": analiz_sonucu
     }
-        
+
 @app.get("/")
 def home():
-    return {"message": "AI Call Center API Çalışıyor."}
+    return {"message": "AI Call Center API Çalışıyor 🚀"}
+
+@app.get("/saglik-kontrolu")
+def saglik_kontrolu_endpoint():  # Fonksiyon ismini değiştirdik!
+    
+    # Servis katmanındaki fonksiyonu çağırıyoruz
+    durum = get_rag_readiness()
+    
+    if durum == True:
+        return {"durum": "aktif", "mesaj": "RAG sistemi bomba gibi çalışıyor 🚀"}
+    else:
+        return {"durum": "pasif", "mesaj": "Sistem henüz yüklenemedi ⚠️"}
