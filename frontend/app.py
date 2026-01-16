@@ -48,6 +48,12 @@ if st.sidebar.checkbox("Rapor Geçmişini Göster"):
         st.dataframe(df)
     else:
         st.warning("Henüz hiç kayıt bulunamadı!")
+        
+    st.write("### 📈 Duygu İstatistikleri")
+
+    duygu_dagilimi = df["Duygu Durumu"].value_counts()
+        
+    st.bar_chart(duygu_dagilimi)
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
