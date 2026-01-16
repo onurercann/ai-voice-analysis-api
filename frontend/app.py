@@ -1,5 +1,7 @@
 import requests
 import streamlit as st
+import pandas as pd
+import os
 
 st.write(f"Şu anki Sürüm: {st.__version__}")
 
@@ -35,6 +37,18 @@ try:
 except:
     st.sidebar.error("Bağlantı Hatası! Backend çalışıyor mu?")
 
+st.sidebar.markdown("---")
+
+if st.sidebar.checkbox("Rapor Geçmişini Göster"):
+    csv_yolu = "cagri_gecmisi.csv"
+
+    if os.path.exists(csv_yolu):
+        df = pd.read_csv(csv_yolu)
+        st.write("### 📊 Çağrı Analiz Raporu")
+        st.dataframe(df)
+    else:
+        st.warning("Henüz hiç kayıt bulunamadı!")
+
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
@@ -61,3 +75,4 @@ if prompt := st.chat_input("Sorunuzu buraya yazın..."):
 
     except requests.exceptions.RequestException as e:
         st.error(f"Bir hata oluştu: {e}")
+

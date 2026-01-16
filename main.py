@@ -1,6 +1,9 @@
 from fastapi import FastAPI, UploadFile, File
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
+import csv
+import os
+from datetime import datetime
 
 # Servislerimizi import ediyoruz
 from services.openai_service import get_voice_transcription, analyze_sentiment
@@ -38,6 +41,15 @@ async def ses_analiz(dosya: UploadFile = File(...)):
     ses_icerigi = await dosya.read()
     cevrilen_metin = get_voice_transcription((dosya.filename, ses_icerigi))
     analiz_sonucu = analyze_sentiment(cevrilen_metin)
+    csv_dosyasi = "cagri_gecmisi.csv"
+    dosya_var_mi = os.path.exists(csv_dosyasi)
+    zaman_damgasi = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    with open(csv_dosyasi, mode="a", newline="", encoding="utf-8") as file:
+        yazici = csv.writer(file)
+        if not dosya_var_mi:
+            yazici.writerow(["Tarih", "Dosya Adı", "Duygu Durumu", "Metin"])
+            yazici.writerow([zaman_damgasi, dosya.filename, analiz_sonucu, cevrilen_metin])
     
     return {
         "dosya": dosya.filename,
